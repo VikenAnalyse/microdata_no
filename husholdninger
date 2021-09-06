@@ -1,0 +1,12 @@
+require no.ssb.fdb:8 as ds
+
+//Opprette datasett med befolkningen, begrenser til regstatus "bosatte"
+create-dataset tbl_bolig
+import ds/BEFOLKNING_FOEDSELS_AAR_MND as faarmnd
+import ds/BEFOLKNING_STATUSKODE 2020-01-01 as befstatus
+keep if befstatus == '1'
+
+//importerer dummyvariabelen kontaktperson for husholdningen (eldste person i hush). Avgrenser populasjonen til kontaktpersoner (én person per husholdning)
+import ds/BEFOLKNING_KONTAKT_HUSHNR 2020-01-01 as hush_kontakt
+keep if hush_kontakt =='1'
+
