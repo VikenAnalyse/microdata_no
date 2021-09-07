@@ -10,3 +10,12 @@ keep if befstatus == '1'
 import ds/BEFOLKNING_KONTAKT_HUSHNR 2020-01-01 as hush_kontakt
 keep if hush_kontakt =='1'
 
+//Importerer husholdningstype (grovinndelt). Genererer dummyvariabel for privathusholdninger og begrenser til disse. 
+import ds/BOFORHOLD_HUSHTYPE 2020-01-01 as hush_type
+generate hush_privat = 0
+replace hush_privat = 1 if hush_type == 'P'
+keep if hush_privat == 1
+
+
+
+summarize faarmnd
