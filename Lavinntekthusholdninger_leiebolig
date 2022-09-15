@@ -1,0 +1,86 @@
+require no.ssb.fdb:8 as ds
+
+//Opprette datasett med befolkningen, begrenser til regstatus "bosatte"
+create-dataset tbl_bolig
+import ds/BEFOLKNING_FOEDSELS_AAR_MND as faarmnd
+import ds/BEFOLKNING_STATUSKODE 2020-01-01 as befstatus
+keep if befstatus == '1'
+
+//importerer dummyvariabelen kontaktperson for husholdningen (eldste person i hush). Avgrenser populasjonen til kontaktpersoner (én person per husholdning)
+import ds/BEFOLKNING_KONTAKT_HUSHNR 2020-01-01 as hush_kontakt
+keep if hush_kontakt =='1'
+
+//Importerer husholdningstype (grovinndelt). Genererer dummyvariabel for privathusholdninger og begrenser til disse. 
+import ds/BOFORHOLD_HUSHTYPE 2020-01-01 as hush_type
+generate hush_privat = 0
+replace hush_privat = 1 if hush_type == 'P'
+keep if hush_privat == 1
+
+//Fylkesinndeling, begrenser til Viken
+import ds/BEFOLKNING_KOMMNR_FORMELL 2020-01-01 as bef_komm_form
+generate bef_fylke_form = substr(bef_komm_form,1,2)
+tabulate bef_fylke_form
+keep if bef_fylke_form == '30'
+
+summarize faarmnd
+
+import ds/BOFORHOLD_EIE_LEIE 2020-01-01 as hush_eieleie
+tabulate hush_eieleie
+summarize hush_eieleie
+generate test = 1
+replace test = 0 if sysmiss (hush_eieleie)
+tabulate test
+
+
+import ds/BOFORHOLD_TRANGBODD 2020-01-01 as bo_trangt
+tabulate bo_trangt, missing
+
+import ds/INNTEKT_HUSH_IES_EU 2019-12-31 as innt_forbruks
+
+generate innt_lav = 0
+replace innt_lav = 1 if innt_forbruks < 204110
+tabulate innt_lav
+
+
+import ds/BEFOLKNING_REGSTAT_HUSHTYP 2020-01-01 as hush_type_d
+
+histogram innt_forbruks
+tabulate innt_lav
+tabulate hush_type_d innt_lav, rowpct
+
+//Teller fødselsdatoer = 2 518 792
+summarize faarmnd
+
+
+
+
+//Kontrollerer opp mot koblingstype. Antall koblet til koblingskode privatbolig = 2 458 927
+import ds/BOFORHOLD_BOLIG_HUSH 2020-01-01 as koblingskode
+tabulate koblingskode
+
+
+
+//kontrollerer opp mot antall personer i husholdningen. Antall husholdninger = 2 474 947
+import ds/BEFOLKNING_PERS_I_HUSHNR 2020-01-01 as hush_antall_personer 
+
+summarize hush_antall_personer
+
+
+
+
+tabulate hush_type_d hush_eieleie, rowpct
+generate hush_leie = 99
+replace hush_leie = 1 if hush_eieleie == '3'
+replace hush_leie = 0 if hush_eieleie =='1'
+replace hush_leie = 0 if hush_eieleie =='2'
+define-labels leielabel 0 'eie' 1 'leie' 99 'na'
+assign-labels hush_leie leielabel
+tabulate hush_eieleie
+
+tabulate hush_leie, missing
+tabulate hush_leie, cellpct
+tabulate bef_komm_form hush_leie
+tabulate bef_komm_form hush_leie, rowpct
+tabulate hush_type_d hush_leie, rowpct
+tabulate bef_komm_form hush_leie hush_type_d, rowpct
+tabulate bef_komm_form hush_leie hush_type_d
