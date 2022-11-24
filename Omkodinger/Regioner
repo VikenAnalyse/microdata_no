@@ -1,6 +1,5 @@
-textblock
-Kommuner 2020 til fylker 2020
-endblock 
+
+// Kommuner 2020 til Fylker 2020
 
 generate fylke2020 = substr(kommunevariabel, 1,2)
 destring fylke2020
