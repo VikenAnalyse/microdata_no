@@ -1,0 +1,9 @@
+textblock
+Kommuner 2020 til fylker 2020
+endblock 
+
+generate fylke2020 = substr(kommunevariabel, 1,2)
+destring fylke2020
+define-labels fylkesnavn2020 03 'Oslo' 11 'Rogaland' 15 'Møre og Romsdal' 18 'Nordland - Nordlánnda' 30 'Viken' 34 'Innlandet'38 'Vestfold og Telemark' 42 'Agder' 46 ' Vestland' 50 'Trøndelag - Trööndelage' 54 'Troms og Finnmark - Romsa ja Finnmárku - Tromssa ja Finmarkku'
+assign-labels fylke2020 fylkesnavn2020
+
