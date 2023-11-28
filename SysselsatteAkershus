@@ -1,0 +1,141 @@
+textblock
+Sysselsatte etter arbeidssted
+-----------------
+Formålet med scriptet er å se på sysselsatte med arbeidssted i Akershus, spesielt med tanke på alder og da i hovedsak de øverste aldersgruppene som vil gå ut av arbeidslivet i løpet av ikke veldig lang tid. I tillegg er noen andre variable importert for å kunne belyse ulike sider ved de sysselsatte.
+
+Tilgjengelige variabler: 
+
+- *arbkomm2022* - sysselsatte personer 15-74 år , etter kommunen virksomheten som personen har hovedarbeidsforhold i, er lokalisert.
+- *arbfylke2022* - fylket virksomheten som personen har hovedarbeidsforhold i, er lokalisert (2024 Akershus, Buskerud, Østfold)
+
+- *bokomm2022* - kommunen personen er folkeregistrert i 
+- *bofylke2022* - fylket personen er folkeregistrert i (2024 Akershus, Buskerud, Østfold)
+
+- *faarmnd* - fødselsdato 
+- *alder* - alder i 2022
+- *aldersgruppe* - egendefinerte aldersgrupper (<50. 50-59,60+)
+
+- *kjoenn* - kjønn
+
+- *statsborgerskap* - statsborgerskap
+
+- *styrk08* - yrketskategori for personens hovedarbeidsforhold, etter styrk08-klassifisering, firesifret
+- *styrk1* - yrketskategori for personens hovedarbeidsforhold, etter styrk08-klassifisering, ettsifret
+- *styrk2* - yrketskategori for personens hovedarbeidsforhold, etter styrk08-klassifisering, tosifret
+- *styrk3* - yrketskategori for personens hovedarbeidsforhold, etter styrk08-klassifisering, tresifret
+- *styrknav* - yrketskategori for personens hovedarbeidsforhold, konvertert til NAV-kategorisering
+
+endblock
+
+require no.ssb.fdb:26 as ds
+create-dataset dataset
+
+
+//importerer personer 15-74 år som er sysselsatt, etter hvilken kommune virksomheten som personen arbeider i, er lokalisert. Legger til variabel for 2024-fylkene Akershus, Buskerud, Østfold (og resten)
+import ds/REGSYS_ARB_ARBKOMM 2022-11-16 as arbkomm2022
+destring arbkomm2022, force
+clone-variables arbkomm2022 -> arbfylke2022
+destring arbfylke2022, force
+recode arbfylke2022 (3019/3037 = 32 'Akershus') (3001/3004 3011/3018 = 31'Østfold') (3005/3007 3038/3054 = 33 'Buskerud') (nonmissing = 98 ' resten av landet') (missing = 99 'missing')
+
+
+//importerer folkeregistrert bokommune, og genererer 2024-fylke
+import ds/BEFOLKNING_KOMMNR_FORMELL 2022-01-01 as bokomm2022
+destring bokomm2022, force
+clone-variables bokomm2022 -> bofylke2022
+recode bofylke2022 (3019/3037 = 32 'Akershus') (3001/3004 3011/3018 = 31'Østfold') (3005/3007 3038/3054 = 33 'Buskerud') (nonmissing = 98 ' resten av landet') (missing = 99 'missing')
+
+
+
+
+//importerer fødselsdato til  populasjonen. Generer alder i 2022. Genererer aldersgrupper (<50, 50-59 og 60+)
+import ds/BEFOLKNING_FOEDSELS_AAR_MND as faarmnd
+generate alder = 2022 - int( faarmnd / 100)
+generate aldersgruppe =  1 
+replace aldersgruppe =  2 if alder >= 50 & alder <=59
+replace aldersgruppe = 3 if alder >=60
+define-labels aldersgruppel 2 '50-' 3 '60+' 1 'u50'
+assign-labels aldersgruppe aldersgruppel 
+
+
+
+//importerer kjønn
+import ds/BEFOLKNING_KJOENN as kjoenn
+
+
+//imporerer statsborgerskap
+import ds/ARBLONN_PERS_STATSBORGERSKAP 2022-11-30 as statsborgerskap
+
+
+
+//importerer yrke for personens hovedarbeidsforhold
+import ds/REGSYS_ARB_YRKE_STYRK08 2022-11-16 as styrk08
+
+//kategoriserer til ettsifret styrk08-yrkesklassifisering
+generate styrk1 = substr(styrk08, 1,1)
+destring styrk1
+define-labels styrk1kat 0 'Militære yrker og uoppgitt' 1 'Ledere' 2 'Akademiske yrker' 3 'Høyskoleyrker' 4'Kontoryrker' 5 'Salgs- og serviceyrker' 6 'Bønder, fiskere mv.' 7 'Håndverkere' 8 'Prosess- og maskinoperatører, transportarbeidere mv.' 9 'Renholdere, hjelpearbeidere'
+assign-labels styrk1 styrk1kat
+
+
+//kategoriserer til tosifret styrk08-yrkesklassifisering
+generate styrk2 = substr(styrk08, 1,2)
+destring styrk2
+define-labels styrk2kat 00	'Uoppgitt / yrker som ikke kan identifiseres' 01	'Offiserer fra fenrik og høyere grad' 02	'Befal med sersjant grad' 03	'Menige' 11	'Politikere og toppledere' 12	'Administrative og merkantile ledere' 13	'Ledere av enheter for vareproduksjon og tjenesteyting' 14	'Ledere i hotell, restaurant, varehandel mv.' 21	'Realister, sivilingeniører mv.' 22	'Medisinske yrker' 23	'Undervisningsyrker' 24	'Rådgivere innen økonomi, administrasjon og salg' 25	'IKT-rådgivere' 26	'Juridiske, samfunnsvitenskapelige og humanistiske yrker' 31	'Ingeniører mv.' 32	'Helserelaterte yrker' 33	'Medarbeidere innen økonomi, administrasjon og salg' 34	'Yrker innen kultur, idrett mv.' 35	'IKT-teknikere' 41	'Kontormedarbeidere' 42	'Kundeserviceyrker' 43	'Økonomi- og logistikkmedarbeidere' 44	'Postbud, arkiv- og personalkontormedarbeidere' 51	'Yrker innen personlig tjenesteyting' 52	'Salgsyrker' 53	'Pleie- og omsorgsarbeidere' 54	'Sikkerhetsarbeidere' 61	'Jordbrukere' 62	'Skogbrukere, fiskere mv.' 71	'Byggearbeidere' 72	'Metall- og maskinarbeidere' 73	'Presisjonsarbeidere, kunsthåndverkere, grafiske arbeidere mv.' 74	'Elektrikere, elektronikere mv.' 75	'Andre håndverkspregede yrker' 81	'Prosess- og maskinoperatører' 82	'Montører' 83	'Transportarbeidere og operatører av mobile maskiner mv.' 91	'Renholdere mv.' 92	'Hjelpearbeidere i jordbruk, skogbruk og fiske' 93	'Hjelpearbeidere i bergverk, industri, bygg og anlegg og transport' 94	'Kjøkkenassistenter' 95	'Reklamedistributører mv.' 96	'Renovasjons- og gjenvinningsarbeidere mv.' 
+assign-labels styrk2 styrk2kat
+
+
+
+//kategoriserer til tresifret styrk08-yrkesklassifisering
+generate styrk3 = substr(styrk08, 1,3)
+destring styrk3
+define-labels styrk3kat 000	'Uoppgitt / yrker som ikke kan identifiseres' 011	'Offiserer fra fenrik og høyere grad' 021	'Befal med sersjant grad' 031	'Menige' 111	'Politikere og toppledere i offentlig administrasjon' 112	'Administrerende direktører' 121	'Ledere av administrative enheter' 122	'Ledere av salgs-, PR- og forskningsenheter' 131	'Ledere i gartnerier, akvakultur mv.' 132	'Ledere av produksjon, utvinning, bygg og anlegg, transport' 133	'Ledere av IKT-enheter' 134	'Ledere av utdanning, helse- og sosialtjenester' 141	'Ledere i hotell og restaurant' 142	'Varehandelssjefer' 143	'Daglige ledere, andre tjenesteytende virksomheter' 211	'Fysikere, kjemikere mv.' 212	'Matematikere, statistikere mv.' 213	'Biologiske yrker mv.' 214	'Sivilingeniører (unntatt elektroteknologi)' 215	'Sivilingeniører elektroteknologi' 216	'Arkitekter, designere mv.' 221	'Leger' 222	'Sykepleiere og spesialsykepleiere' 225	'Veterinærer' 226	'Andre medisinske yrker' 231	'Universitets- og høyskolelektorer/-lærere' 232	'Yrkesfaglærere' 233	'Lektorer mv (videregående skole)' 234	'Grunnskole- og førskole-/barnehagelærere' 235	'Andre lærere' 241	'Finansrådgivere' 242	'Administrasjonsrådgivere' 243	'Rådgivere innen salg, markedsføring mv.' 251	'Programvare- og applikasjonsutviklere/analytikere' 252	'Databasedesignere, systemadministratorer mv.' 261	'Juridiske yrker' 262	'Bibliotekarer, arkivarer mv.' 263	'Samfunnsvitenskapelige, humanistiske og religiøse yrker' 264	'Forfattere, journalister mv.' 265	'Profesjonelle kunstnere' 311	'Ingeniører' 312	'Arbeidsledere innen bergfag, industri, bygg og anlegg' 313	'Prosesskontrollører' 314	'Bioteknikere mv.' 315	'Skipoffiserer, flygere, flygeledere mv.' 321	'Radiografer, proteseteknikere, reseptarer mv.' 323	'Yrker innen alternativ medisin' 324	'Dyrepleiere' 325	'Andre helseyrker' 331	'Yrker innen finanstjenester' 332	'Agenter og meglere' 333	'Forretningstjenesteyrker' 334	'Sekretærer og arbeidsledere for kontorpersonell' 335	'Yrker innen offentlig forvaltning' 341	'Yrker innen sosialarbeid og kultur' 342	'Yrker innen sport og idrett' 343	'Yrker innen estetiske fag' 351	'Operatører og brukerstøtte, IKT' 352	'Teknikere innen kringkasting og telekom' 411	'Kontormedarbeidere' 413	'Dataregistrere og stenografer' 421	'Kundebehandlere, penger og pengespill' 422	'Reisebyrå-, resepsjons- og andre opplysningsmedarbeidere' 431	'Regnskaps- og lønnsmedarbeidere mv.' 432	'Lager- og transportmedarbeidere' 441	'Postbud, arkiv- og personalkontor-medarbeidere' 511	'Persontransportpersonell' 512	'Kokker' 513	'Servitører og bartendere' 514	'Frisører, kosmetologer mv.' 515	'Renholdsledere og vaktmestre' 516	'Andre yrker innen personlig tjenesteyting' 521	'Torg og markedsselgere' 522	'Butikkselgere' 523	'Billettselgere' 524	'Andre salgsyrker' 531	'Barnehage- og skoleassistenter mv.' 532	'Pleiemedarbeidere' 541	'Sikkerhetsarbeidere' 611	'Korn-, grønnsaks-, frukt- og bærprodusenter, gartnere' 612	'Husdyr-, egg- og melkeprodusenter' 613	'Plante- og husdyrprodusenter (kombinasjonsbruk)' 621	'Skogbrukere' 622	'Havbruksarbeidere og fiskere' 711	'Bygningsarbeidere' 712	'Bygningstekniske arbeidere' 713	'Malere, overflatebehandlere, feiere mv.' 721	'Støpere, sveisere, platearbeidere mv.' 722	'Smeder, verktøymakere mv.' 723	'Mekanikere og reparatører' 731	'Presisjonsarbeidere og kunsthåndverkere' 732	'Grafiske arbeidere' 741	'Elektrikere mv.' 742	'Serviceelektronikere og tele- og IKT-installatører mv.' 751	'Slaktere, fiskehandlere, konditorer mv.' 752	'Møbelsnekkere' 753	'Skreddere, møbeltapetserere mv.' 754	'Yrkesdykkere, skytebaser mv.' 811	'Operatører innen borefag mv.' 812	'Operatører metallproduksjon' 813	'Operatører innen produksjon av kjemiske produkter' 814	'Operatører innen gummi, plast og papirproduksjon' 815	'Operatører innen bearbeiding og produksjon av tekstiler, pels, skinn og lær' 816	'Operatører innen næringsmiddelproduksjon' 817	'Operatører innen treforedling og trelast' 818	'Operatører av andre stasjonære maskiner' 821	'Montører' 831	'Lokomotiv og T-baneførere mv.' 832	'Bil-, drosje- og varebilførere' 833	'Lastebil-, buss- og trikkeførere' 834	'Operatører av mobile maskiner mv.' 835	'Dekks- og maskinmannskap (skip)' 911	'Renholdere' 912	'Bilvaskere, vinduspussere mv.' 921	'Hjelpearbeidere i jordbruk, skogbruk og fiske' 931	'Hjelpearbeidere i bergverk, bygg og anlegg' 932	'Hjelpearbeidere i industri' 933	'Hjelpearbeidere innen transport og lager' 941	'Kjøkkenassistenter' 951	'Reklamedistributører mv.' 961	'Renovasjons- og gjenvinningsarbeidere' 962	'Andre hjelpearbeidere' 
+assign-labels styrk3 styrk3kat
+
+
+//konverterer fra styrk08 til NAV-yrkesklassifisering
+generate styrknav = substr(styrk08,1,4)
+destring styrknav
+recode styrknav (1111/ 1223 = 1 'Ledere') (2111 2112 2113 2114 2120 2131 2132 2133 1330 2166 2511 2512 2513 2514 2519 2521 2522 2523 2529 3511 3512 3513 3514 3521 3522 2141 2142 2143 2144 2145 2146 2149 2151 2152 2153 2161 2162 2164 2165 3112 3113 3114 3115 3116 3117 3118 3119 3141 3142 3143 3155 3212 = 2 'Ingeniør- og ikt-fag') (2342 2341 2320 2330 2310 2351 2352 2353 2354 2355 2356 2359 5165 1341 1345 = 3 'Undervisning') (2422 2432 2622 2642 2631 2632 2611 2612 2619 2421 2423 2424 2621 2633 2634 2636 = 4 'Akademiske yrker') (2211 2212 2250 2261 2262 2265 2221 2222 2223 2224 2635 3353 3412 5321 5322 5329 2263 2264 2266 2267 2269 3211 3213 3230 3240 3251 3254 3256 3257 3258 3259 1342 1343 1344 = 5 'Helse, pleie og omsorg') (5312 5311 1346 2431 2433 2434 3321 3323 3333 3311 3315 3324 3331 3334 2411 2412 2413 3312 3313 = 6 'Barne- og ungdomsarbeid') (3354 3359 3342 3343 3352 4110 4214 4311 4312 4313 4413 4415 4416 4321 4322 4323 4222 4223 4224 4225 4226 3332 3339 3341 4131 4132 4211 4213 4227 4229 4411 4412 = 7 'Kontorarbeid') (5221 5222 5223 9334 1420 3322 5211 5212 5230 5242 5243 5244 5245 5246 5249 = 8 'Butikk- og salgsarbeid') (1311 1312 6111 6112 6113 6114 6121 6122 6123 6129 6130 6210 6221 6222 6224 8341 9211 9212 9213 9214 9215 9216 = 9 'Jordbruk, skogbruk og fiske') (7126 7115 7411 3123 7112 7114 7119 7121 7122 7123 7124 7125 7127 7131 7132 7133 7542 8342 8343 8344 9312 9313 1323 = 10 'Bygg og anlegg') (7231 7232 7233 7234 3121 3122 3131 3132 3133 3134 3135 3139 8111 8112 8113 8114 8121 8122 8131 8132 8141 8142 8143 8151 8152 8153 8154 8155 8156 8157 8159 8171 8172 8181 8182 8189 7511 7512 7513 7514 7515 8160 8183 7412 7413 7421 7422 8211 8212 8219 3214 7113 7221 7222 7311 7312 7313 7314 7315 7316 7317 7318 7319 7321 7322 7323 7522 7531 7532 7534 7535 7536 7543 7544 7549 9311 9321 9329 9333 7211 7212 7213 7214 7215 7223 7224 1321 1322 = 11 'Industriarbeid') (3151 3152 8350 3153 3154 8322 8311 8312 8331 8332 4221 5113 5111 5112 3434 5120 5131 5132 9412 1324 1411 1412 = 12 'Reiseliv og transport') (110 210 310 3351 3355 5411 5413 5141 5142 5151 5152 9111 9112 9122 9123 9129 5153 5414 5419 1349 1439 2163 3411 3413 4212 5161 5163 5164 5169 7541 9331 9510 9611 9612 9613 9621 9622 9623 9629 1431 2641 2643 2651 2652 2653 2654 2655 2656 2659 3421 3422 3423 3431 3432 3433 3439 5241 = 13 'Serviceyrker og annet arbeid') (9999 = 15 'Restgruppe') (0 = 14 'Ingen yrkesbakgrunn eller uoppgitt')
+
+
+textblock
+Sysselsatte med arbeidssted i Akershus
+---------------
+Antall og andel sysselsatte etter aldersgruppe, sammenlignet med Buskerud, Østfold, og landet
+endblock
+
+tabulate arbfylke2022 aldersgruppe 
+tabulate arbfylke2022 aldersgruppe , rowpct
+
+textblock
+Sysselsatte i Akershus etter ettsifret STYRK08
+---
+endblock
+keep if arbfylke2022 == 32
+tabulate styrk1 aldersgruppe, rowpct
+tabulate styrk1 aldersgruppe
+
+textblock
+Sysselsatte i Akershus etter tosifret STYRK08
+---
+endblock
+
+tabulate styrk2 aldersgruppe, rowpct
+tabulate styrk2 aldersgruppe
+
+textblock
+Sysselsatte i Akershus etter tresifret STYRK08
+---
+endblock
+
+tabulate styrk3 aldersgruppe, rowpct
+tabulate styrk3 aldersgruppe
+
+textblock
+Sysselsatte i Akershus etter firesifret STYRK08
+---
+endblock
+
+tabulate styrk08 aldersgruppe, rowpct
+tabulate styrk08 aldersgruppe
