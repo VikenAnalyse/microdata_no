@@ -1,3 +1,9 @@
+// Fylker 2024 fra kommuner 2020
+
+clone-variables kommune2020 -> fylke2024
+destring kommune2020, force
+recode kommune2020 (3019/3037 = 32 'Akershus') (3001/3004 3011/3018 = 31'Østfold') (3005/3007 3038/3054 = 33 'Buskerud') (1100/1199 = 11 'Rogaland') (1500/1599 = 15 'Møre og Romsdal') (1800/1899 = 18 'Nordland') (3400/3499 = 34 'Innlandet') (3801/3805 3811 = 39 'Vestfold') (3806/3808 3812/3825 = 40 'Telemark') (4200/4299 = 42 'Agder') (4600/4699 = 46 'Vestland') (5000/5099 = 50 'Trøndelag') (5401 5402 5411/5429 = 55 'Troms') (5403/5406 5430/5444 = 56 'Finnmark')  (0301 = 03 'Oslo') (2100/2199 = 21 'Svalbard') (2200/2299 = 22 'Jan Mayen') (2300/2399 = 23 'Kontinentalsokkelen') (nonmissing = 98 ' resten av landet') (missing = 99 'missing')
+
 
 // Fylker 2020 fra Kommuner 2020
 
